@@ -80,10 +80,10 @@
               const cleanLabel = (btn.label || '').replace(/'/g, '');
               
               buttonsHTML += `
-                <a href="${btn.url}" target="_blank" class="block w-full py-3.5 px-4 rounded-xl font-semibold shadow-lg transition duration-200 transform active:scale-95 ${cleanColor}">
-                  ${cleanLabel}
-                </a>
-              `;
+  <a href="${btn.url}" target="_blank" class="flex items-center justify-center gap-3 w-full py-3.5 px-4 rounded-xl font-semibold shadow-lg transition duration-200 transform active:scale-95 ${cleanColor}">
+    ${cleanLabel}
+  </a>
+`;
             });
           }
 
