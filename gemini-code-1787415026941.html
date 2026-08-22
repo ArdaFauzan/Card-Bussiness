@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mengarahkan...</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body
+    class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4"
+  >
+    <!-- Container Loading / Landing Page -->
+    <div id="app" class="w-full max-w-sm mx-auto text-center">
+      <div id="loading" class="space-y-4">
+        <div
+          class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"
+        ></div>
+        <p class="text-gray-400 text-sm">Memuat halaman...</p>
+      </div>
+    </div>
+
+    <script>
+      // GANTI SAMA CREDENTIAL SUPABASE LU
+      const SUPABASE_URL =
+        "https://supabase.com/dashboard/project/pjnimbqwjdsqxtkodbzz";
+      const SUPABASE_KEY = "esb_publishable_wFxOjC74dAXt5tk6d8WlPQ_NAtgaUn_";
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const papanId = urlParams.get("id");
+      const app = document.getElementById("app");
+
+      if (!papanId) {
+        app.innerHTML = `<h1 class="text-red-500 font-bold text-lg">Error: ID Papan Tidak Ditemukan!</h1>`;
+      } else {
+        // 1. Cek tipe papan ke Supabase
+        fetch(`${SUPABASE_URL}/rest/v1/papan?id=eq.${papanId}&select=*`, {
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+          },
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (!data || data.length === 0) {
+              app.innerHTML = `<h1 class="text-yellow-500 font-bold text-lg">Papan Belum Didaftarkan!</h1>`;
+              return;
+            }
+
+            const papan = data[0];
+
+            // CABANG 1: Jika produk Direct Review / IG
+            if (papan.type === "direct") {
+              window.location.replace(papan.target_url);
+            }
+            // CABANG 2: Jika produk All-In-One (Landing Page)
+            else if (papan.type === "landing") {
+              renderLandingPage(papan);
+            }
+          })
+          .catch(() => {
+            app.innerHTML = `<h1 class="text-red-500 font-bold text-lg">Gagal Terhubung ke Database!</h1>`;
+          });
+      }
+
+      // Fungsi Render Landing Page Banyak Tombol
+      function renderLandingPage(papan) {
+        // Fetch daftar tombol berdasarkan papan_id
+        fetch(
+          `${SUPABASE_URL}/rest/v1/buttons?papan_id=eq.${papan.id}&order=sort_order.asc`,
+          {
+            headers: {
+              apikey: SUPABASE_KEY,
+              Authorization: `Bearer ${SUPABASE_KEY}`,
+            },
+          },
+        )
+          .then((res) => res.json())
+          .then((buttons) => {
+            let buttonsHTML = "";
+            buttons.forEach((btn) => {
+              buttonsHTML += `
+            <a href="${btn.url}" target="_blank" class="block w-full py-3.5 px-4 rounded-xl font-semibold shadow-lg transition duration-200 transform active:scale-95 ${btn.color_class}">
+              ${btn.label}
+            </a>
+          `;
+            });
+
+            // Tampilkan ke layar
+            app.innerHTML = `
+          <div class="space-y-6 animate-fade-in">
+            ${papan.logo_url ? `<img src="${papan.logo_url}" class="w-24 h-24 rounded-full mx-auto object-cover border-2 border-gray-700 shadow-md">` : ""}
+            <h1 class="text-xl font-bold tracking-wide">${papan.title || "Selamat Datang!"}</h1>
+            <div class="space-y-3">
+              ${buttonsHTML}
+            </div>
+            <p class="text-xs text-gray-500 pt-6">Powered by Smart Card NFC</p>
+          </div>
+        `;
+          });
+      }
+    </script>
+  </body>
+</html>
