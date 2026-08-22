@@ -6,24 +6,18 @@
     <title>Mengarahkan...</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body
-    class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4"
-  >
-    <!-- Container Loading / Landing Page -->
+  <body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+
     <div id="app" class="w-full max-w-sm mx-auto text-center">
       <div id="loading" class="space-y-4">
-        <div
-          class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"
-        ></div>
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
         <p class="text-gray-400 text-sm">Memuat halaman...</p>
       </div>
     </div>
 
     <script>
-      // GANTI SAMA CREDENTIAL SUPABASE LU
       const SUPABASE_URL = "https://pjnimbuqwjdsqxtkodbzz.supabase.co";
-      const SUPABASE_KEY =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBqbmltYnF3amRzcXh0a29kYnp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MTEyMjMsImV4cCI6MjEwMjk4NzIyM30.9-l80YfY6q8MOiJHKyyAa6s2fpV0-be3WwaUL04zlNA";
+      const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBqbmltYnF3amRzcXh0a29kYnp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MTEyMjMsImV4cCI6MjEwMjk4NzIyM30.9-l80YfY6q8MOiJHKyyAa6s2fpV0-be3WwaUL04zlNA";
 
       const urlParams = new URLSearchParams(window.location.search);
       const papanId = urlParams.get("id");
@@ -32,71 +26,80 @@
       if (!papanId) {
         app.innerHTML = `<h1 class="text-red-500 font-bold text-lg">Error: ID Papan Tidak Ditemukan!</h1>`;
       } else {
-        // 1. Cek tipe papan ke Supabase
+        // Fetch Papan
         fetch(`${SUPABASE_URL}/rest/v1/papan?id=eq.${papanId}&select=*`, {
           headers: {
             apikey: SUPABASE_KEY,
             Authorization: `Bearer ${SUPABASE_KEY}`,
           },
         })
-          .then((res) => res.json())
-          .then((data) => {
-            if (!data || data.length === 0) {
-              app.innerHTML = `<h1 class="text-yellow-500 font-bold text-lg">Papan Belum Didaftarkan!</h1>`;
-              return;
-            }
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || `HTTP error ${res.status}`);
+          return data;
+        })
+        .then((data) => {
+          if (!data || data.length === 0) {
+            app.innerHTML = `<h1 class="text-yellow-500 font-bold text-lg">Papan ID ${papanId} Belum Didaftarkan!</h1>`;
+            return;
+          }
 
-            const papan = data[0];
+          const papan = data[0];
 
-            // CABANG 1: Jika produk Direct Review / IG
-            if (papan.type === "direct") {
-              window.location.replace(papan.target_url);
-            }
-            // CABANG 2: Jika produk All-In-One (Landing Page)
-            else if (papan.type === "landing") {
-              renderLandingPage(papan);
-            }
-          })
-          .catch(() => {
-            app.innerHTML = `<h1 class="text-red-500 font-bold text-lg">Gagal Terhubung ke Database!</h1>`;
-          });
+          if (papan.type === "direct") {
+            window.location.replace(papan.target_url);
+          } else if (papan.type === "landing") {
+            renderLandingPage(papan);
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          app.innerHTML = `
+            <h1 class="text-red-500 font-bold text-lg">Gagal Memuat!</h1>
+            <p class="text-xs text-gray-400 mt-2 font-mono">${err.message}</p>
+          `;
+        });
       }
 
-      // Fungsi Render Landing Page Banyak Tombol
       function renderLandingPage(papan) {
-        // Fetch daftar tombol berdasarkan papan_id
-        fetch(
-          `${SUPABASE_URL}/rest/v1/buttons?papan_id=eq.${papan.id}&order=sort_order.asc`,
-          {
-            headers: {
-              apikey: SUPABASE_KEY,
-              Authorization: `Bearer ${SUPABASE_KEY}`,
-            },
+        fetch(`${SUPABASE_URL}/rest/v1/buttons?papan_id=eq.${papan.id}&order=sort_order.asc`, {
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
           },
-        )
-          .then((res) => res.json())
-          .then((buttons) => {
-            let buttonsHTML = "";
+        })
+        .then((res) => res.json())
+        .then((buttons) => {
+          let buttonsHTML = "";
+          
+          if (Array.isArray(buttons)) {
             buttons.forEach((btn) => {
+              // Membersihkan tanda kutip nyasar jika ada
+              const cleanColor = (btn.color_class || '').replace(/'/g, '');
+              const cleanLabel = (btn.label || '').replace(/'/g, '');
+              
               buttonsHTML += `
-            <a href="${btn.url}" target="_blank" class="block w-full py-3.5 px-4 rounded-xl font-semibold shadow-lg transition duration-200 transform active:scale-95 ${btn.color_class}">
-              ${btn.label}
-            </a>
-          `;
+                <a href="${btn.url}" target="_blank" class="block w-full py-3.5 px-4 rounded-xl font-semibold shadow-lg transition duration-200 transform active:scale-95 ${cleanColor}">
+                  ${cleanLabel}
+                </a>
+              `;
             });
+          }
 
-            // Tampilkan ke layar
-            app.innerHTML = `
-          <div class="space-y-6 animate-fade-in">
-            ${papan.logo_url ? `<img src="${papan.logo_url}" class="w-24 h-24 rounded-full mx-auto object-cover border-2 border-gray-700 shadow-md">` : ""}
-            <h1 class="text-xl font-bold tracking-wide">${papan.title || "Selamat Datang!"}</h1>
-            <div class="space-y-3">
-              ${buttonsHTML}
+          app.innerHTML = `
+            <div class="space-y-6">
+              ${papan.logo_url ? `<img src="${papan.logo_url}" class="w-24 h-24 rounded-full mx-auto object-cover border-2 border-gray-700 shadow-md">` : ""}
+              <h1 class="text-xl font-bold tracking-wide">${papan.title || "Selamat Datang!"}</h1>
+              <div class="space-y-3">
+                ${buttonsHTML}
+              </div>
+              <p class="text-xs text-gray-500 pt-6">Powered by Smart Card NFC</p>
             </div>
-            <p class="text-xs text-gray-500 pt-6">Powered by Smart Card NFC</p>
-          </div>
-        `;
-          });
+          `;
+        })
+        .catch((err) => {
+          app.innerHTML = `<h1 class="text-red-500 font-bold text-lg">Gagal Memuat Tombol!</h1>`;
+        });
       }
     </script>
   </body>
